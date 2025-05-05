@@ -1,0 +1,11 @@
+<h1>Welcome to the Site</h1>
+
+<% if (!user) { %>
+  <p>You are not logged in.</p>
+  <a href="/signup">Sign Up</a> |
+  <a href="/login">Log In</a>
+<% } else { %>
+  <p>Hello, <%= user.name %>!</p>
+  <a href="/members">Go to Members Area</a> |
+  <a href="/logout">Log Out</a>
+<% } %>

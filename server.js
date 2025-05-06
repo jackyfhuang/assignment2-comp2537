@@ -119,7 +119,7 @@ app.post("/login", async (req, res) => {
     }
 
     req.session.user = { name: user.name, email: user.email };
-    res.redirect("/members");
+    res.redirect("/");
   } catch (err) {
     console.error(err);
     res.send("Error logging in.");

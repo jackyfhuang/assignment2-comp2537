@@ -20,9 +20,23 @@ const db = mongoose.connection;
 const userSchema = new mongoose.Schema({
   name: String,
   email: String,
-  password: String
+  password: String,
+  user_type: String
 });
 const User = mongoose.model("User", userSchema);
+
+function requireAdmin(req, res, next) {
+
+  if (!req.session.user) {
+    return res.redirect("/login");
+  }
+
+  if (req.session.user.user_type !== "admin") {
+    return res.status(403).send("403 Forbidden – Admins only");
+  }
+  next();
+}
+
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -77,10 +91,10 @@ app.post("/signup", async (req, res) => {
       return res.send(`<p>Email already in use.</p><a href="/signup">Try again</a>`);
     }
 
-    const newUser = new User({ name, email, password: hashedPassword });
+    const newUser = new User({ name, email, password: hashedPassword, user_type:"user" });
     await newUser.save();
 
-    req.session.user = { name: newUser.name, email: newUser.email };
+    req.session.user = { name: newUser.name, email: newUser.email, user_type: newUser.user_type };
     res.redirect("/members");
   } catch (err) {
     console.error(err);
@@ -88,9 +102,34 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+app.get("/admin", requireAdmin, async (req, res) => {
+  const allUsers = await User.find({});
+  res.render("admin", { user: req.session.user, users: allUsers });
+});
+
+
 app.get("/login", (req, res) => {
   res.render("login");
 });
+
+app.post("/promote", requireAdmin, async (req, res) => {
+  const { email } = req.body;
+  await User.findOneAndUpdate({ email }, { user_type: "admin" });
+  res.redirect("/admin");
+});
+
+app.post("/demote", requireAdmin, async (req, res) => {
+  const { email } = req.body;
+
+  if (req.session.user.email === email) {
+    return res.send("You cannot demote yourself.");
+  }
+
+  await User.findOneAndUpdate({ email }, { user_type: "user" });
+  res.redirect("/admin");
+});
+
+
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -118,7 +157,7 @@ app.post("/login", async (req, res) => {
       return res.send(`<p>Invalid password.</p><a href="/login">Try again</a>`);
     }
 
-    req.session.user = { name: user.name, email: user.email };
+    req.session.user = { name: user.name, email: user.email, user_type: user.user_type };
     res.redirect("/");
   } catch (err) {
     console.error(err);
